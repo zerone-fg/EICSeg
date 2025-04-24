@@ -37,9 +37,6 @@ def process_img(path: pathlib.Path, size: Tuple[int, int]):
     img = PIL.Image.open(path)
     img = img.resize(size, resample=PIL.Image.BILINEAR)
 
-    # img_save = img
-    # img_save.save("/newdata3/xsa/ICUSeg/mambamodel/eval/wbc_vis/{}".format(str(path).split("/")[-1]))
-
     img = img.convert("L")
     img = np.array(img)
     img = img.astype(np.float32)
@@ -51,30 +48,13 @@ def process_seg(path: pathlib.Path, size: Tuple[int, int]):
     seg = seg.resize(size, resample=PIL.Image.NEAREST)
     seg = np.array(seg)
 
-    # seg.save("/newdata3/xsa/ICUSeg/mambamodel/eval/wbc_vis/{}".format(str(path).split("/")[-1]))
-    # h, w = seg.shape
-    # save_mask = torch.zeros((1, 1, h, w), dtype=torch.uint8)
-
-    # for i, id in enumerate([128, 255]):
-    #     save_mask[0, 0, seg == id] = torch.tensor(i + 1 + 4, dtype=torch.uint8)
-    # save_mask = F.interpolate(save_mask, (448, 448), mode='nearest')
-    # save_mask = save_mask.squeeze(0).squeeze(0)
-    # save_colored_mask_1(np.array(save_mask), "/newdata3/xsa/ICUSeg/mambamodel/eval/wbc_vis/{}".format(str(path).split("/")[-1]))
-
     seg = np.stack([seg == 0, seg == 128, seg == 255])
-    # seg[seg == 128] = 1
-    # seg[seg == 255] = 2
     seg = seg.astype(np.float32)
     return seg
 
 
 def load_folder(path: pathlib.Path, size: Tuple[int, int] = (128, 128)):
     data = []
-    # for file in sorted(path.glob("*.bmp")):
-    #     img = process_img(file, size=size)
-    #     seg_file = file.with_suffix(".png")
-    #     seg = process_seg(seg_file, size=size)
-    #     data.append((img / 255.0, seg, file))
     import os
     for file in os.listdir("/newdata3/xsa/ICUSeg_Data/wbc1/imgs"):
         img = process_img(os.path.join("/newdata3/xsa/ICUSeg_Data/wbc1/imgs",file), size=size)
@@ -109,7 +89,6 @@ class WBCDataset(Dataset):
 
     def __post_init__(self):
         root = require_download_wbc()
-        # path = root / {"JTSC": "Dataset 1", "CV": "Dataset 2"}[self.dataset]
         path = root
         T = torch.from_numpy
         self._data = [(T(x)[None], T(y), name) for x, y, name in load_folder(path, size=self.size)]
@@ -117,8 +96,6 @@ class WBCDataset(Dataset):
             self._ilabel = {"cytoplasm": 1, "nucleus": 2, "background": 0}[self.label]
         if self.mode == 'test':
             self._idxs = self._split_indexes()
-        # else:
-        #     self._idxs = self._train_split_indexes()
 
     def _split_indexes(self):
         rng = np.random.default_rng(42)
@@ -136,11 +113,6 @@ class WBCDataset(Dataset):
     def __len__(self):
         return len(self._idxs)
 
-    # def __getitem__(self, idx):
-    #     img, seg, name = self._data[self._idxs[idx]]
-    #     if self.label is not None:
-    #         seg = seg[self._ilabel][None]
-    #     return img, seg, name
     def __getitem__(self, idx):
         if self.split == "support":  # 仅对 support 数据动态打乱
             idx = np.random.randint(0, len(self._idxs))
