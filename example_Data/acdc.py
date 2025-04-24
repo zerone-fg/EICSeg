@@ -21,7 +21,6 @@ def process_img(path: pathlib.Path, size: Tuple[int, int]):
     x, y = img_1024.shape
     img_448 = zoom(img_1024, (size[0] / x, size[1] / y), order=0)
     img = img_448.astype(np.float32)
-    # Image.fromarray(np.uint8(img * 255)).save("/newdata3/xsa/ICUSeg/mambamodel/eval/acdc_com/{}.png".format(str(path).split("/")[-1]))
     return img
 
 
@@ -37,19 +36,11 @@ def process_seg(path: pathlib.Path, size: Tuple[int, int]):
 
 def load_folder(path: pathlib.Path, size: Tuple[int, int] = (128, 128)):
     data = []
-    # data_path = "/newdata3/xsa/ACDC_ori/list/test_2.list"
-    # with open(data_path, 'r') as f:
-    #     image_list = f.readlines()
-    # filter_data = sorted([item.replace('\n', '').split(".")[0]
-    #                      for item in image_list])
-    # print(filter_data)
     for file in os.listdir(path):
         if 'acdc' in file:
-            # if not any(substring in file for substring in filter_data):
             img = process_img(join(path, file), size=size)
             seg_file = join(path, file).replace('imgs', 'gts')
             seg = process_seg(seg_file, size=size)
-            # if np.sum(seg[0]) > 0 and np.sum(seg[1]) and np.sum(seg[2]) > 0:
             data.append((img, seg, file))
     return data
 
@@ -94,11 +85,6 @@ class ACDCDataset(Dataset):
     def __len__(self):
         return len(self._idxs)
 
-    # def __getitem__(self, idx):
-    #     img, seg, name = self._data[self._idxs[idx]]
-    #     if self.label is not None:
-    #         seg = seg[self._ilabel][None]
-    #     return img, seg, name
     def __getitem__(self, idx):
         if self.split == "support":  # 仅对 support 数据动态打乱
             idx = np.random.randint(0, len(self._idxs))
