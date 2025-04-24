@@ -14,11 +14,7 @@ join = os.path.join
 
 
 def process_img(path: pathlib.Path, size: Tuple[int, int]):
-    # img_1024 = np.load(
-    #     join(path), "r", allow_pickle=True
-    # )
     img_1024 = Image.open(path)
-    # img_1024 = Image.fromarray(img_1024)
     img_1024 = img_1024.resize(size, resample=Image.BILINEAR)
     img_1024 = img_1024.convert('L')
 
@@ -27,10 +23,6 @@ def process_img(path: pathlib.Path, size: Tuple[int, int]):
     return img
 
 def process_seg(path: pathlib.Path, size: Tuple[int, int]):
-    # gt = np.load(
-    #     path, "r", allow_pickle=True
-    # )
-    # gt_448 = Image.fromarray(np.uint8(gt)).resize((size[0], size[1]), Image.NEAREST)
     gt_448 = Image.open(path)
     gt_448 = gt_448.resize(size, resample=Image.NEAREST)
     seg = np.array(gt_448)
