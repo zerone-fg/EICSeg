@@ -17,8 +17,6 @@ join = os.path.join
 def process_img(path: pathlib.Path, size: Tuple[int, int]):
     img = PIL.Image.open(path)
     img = img.resize(size, resample=PIL.Image.BILINEAR)
-
-    # img.save("/newdata3/xsa/ICUSeg/mambamodel/eval/scd_com/{}".format(str(path).split("/")[-1]))
     img = img.convert("L")
     img = np.array(img)
     img = img.astype(np.float32)
@@ -39,8 +37,6 @@ def process_seg(path: pathlib.Path, size: Tuple[int, int]):
     seg_o = np.array(seg_o_l == 255, dtype=np.uint8)
 
     seg = seg_o - seg_i
-    # print(np.unique(seg))
-    # seg[seg > 1] = 1
     seg = np.stack([seg == 0, seg == 1])
     seg = seg.astype(np.float32)
     return seg
@@ -107,11 +103,6 @@ class SCDDataset(Dataset):
     def __len__(self):
         return len(self._idxs)
 
-    # def __getitem__(self, idx):
-    #     img, seg, name = self._data[self._idxs[idx]]
-    #     if self.label is not None:
-    #         seg = seg[self._ilabel][None]
-    #     return img, seg, name
     def __getitem__(self, idx):
         if self.split == "support":  # 仅对 support 数据动态打乱
             idx = np.random.randint(0, len(self._idxs))
