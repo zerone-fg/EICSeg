@@ -1,6 +1,6 @@
 # EICSeg: Universal Medical Image Segmentation via Explicit In-Context Learning
 
-[Shiao Xie](https://example.com), [Liangjun Zhang](https://example.com), [Ziwei Niu](https://example.com)  
+[Shiao Xie](https://example.com), [Liangjun Zhang](https://example.com)
 <sup>1 Zhejiang University</sup>, <sup>2 Hikvision Research Institute</sup>, <sup>3 Zhejiang University</sup>
 
 👉 [**Paper**](#) | [**Demo**](#) | [**Project Page**](#)
