@@ -14,16 +14,23 @@ With a single unified architecture, EICSeg enables fully automatic segmentation 
 - 🧩 Few-shot scenarios
 - 🌀 In-domain and out-of-domain generalization
 
-EICSeg is evaluated across diverse benchmarks (e.g., MoNuSeg, Cervix, ACDC, WBC, Spine, STARE), showing strong performance in [automatic medical image segmentation tasks].
-
+EICSeg is evaluated across diverse benchmarks, showing strong performance in [automatic medical image segmentation tasks].
+- MoNuSeg
+- STARE
+- PanDental
+- Spine
+- ACDC
+- Cervix
+- SCD
+- WBC
+- HipXray
 ---
 
 ## 📦 Features
 
 - ✅ Unified framework for **multi-modal** inference
 - 🧩 Supports **in-context prompts** for flexible adaptation
-- ⚡ Deployable to edge devices with **lightweight variants**
-- 🔁 Built-in support for **continual learning** and **domain adaptation**
+- ⚡ Exploring the integration of different functional VFMs
 
 ---
 
