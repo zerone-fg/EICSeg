@@ -13,15 +13,8 @@ join = os.path.join
 
 
 def process_img(path: pathlib.Path, size: Tuple[int, int]):
-    # img_1024 = np.load(
-    #     join(path), "r", allow_pickle=True
-    # )
     img_1024 = Image.open(join(path))
-    # img_1024 = Image.fromarray(img_1024)
     img_1024 = img_1024.resize(size, resample=Image.BILINEAR)
-
-    # img_save = img_1024
-    # img_save.save("/newdata3/xsa/ICUSeg/mambamodel/eval/monuseg_vis/{}.jpg".format(str(path).split("/")[-1][:-4]))
 
     img_1024 = img_1024.convert('L')
     img = np.array(img_1024)
@@ -31,14 +24,9 @@ def process_img(path: pathlib.Path, size: Tuple[int, int]):
 
 
 def process_seg(path: pathlib.Path, size: Tuple[int, int]):
-    # gt = np.load(
-    #     path, "r", allow_pickle=True
-    # )
     gt_448 = Image.open(path).resize((size[0], size[1]), Image.NEAREST)
-    # gt_448 = Image.fromarray(np.uint8(gt)).resize((size[0], size[1]), Image.NEAREST)
     seg = np.array(gt_448)
-    seg[seg==255] = 1
-    # seg = np.stack([seg == 0, seg == 255])
+    seg = np.stack([seg == 0, seg == 255]
     seg = seg.astype(np.float32)
     return seg
 
@@ -93,11 +81,6 @@ class MonusegDataset(Dataset):
     def __len__(self):
         return len(self._idxs)
 
-    # def __getitem__(self, idx):
-    #     img, seg, name = self._data[self._idxs[idx]]
-    #     if self.label is not None:
-    #         seg = seg[self._ilabel][None]
-    #     return img, seg, name
     def __getitem__(self, idx):
         if self.split == "support":  # 仅对 support 数据动态打乱
             idx = np.random.randint(0, len(self._idxs))
