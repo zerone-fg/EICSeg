@@ -47,8 +47,8 @@ We are actively working on releasing more components of the EICSeg project. The 
 - [x] **Network Architecture Details**  
   A detailed breakdown of our unified architecture, including the explicit in-context prompt design.
 
-- [x] **Evaluation Script**
-  Standardized scripts to validate model performance on benchmarks (e.g., metrics like Dice Score)
+- [x] **Evaluation Script**  
+Standardized scripts to validate model performance on benchmarks (e.g., metrics like Dice Score)
 
 - [ ] **Data Preparation Instructions**  
   Guidance for dataset preprocessing and formatting, covering all supported benchmarks.
