@@ -2,10 +2,6 @@ import torch.nn.functional as F
 import torch
 import sys
 import os
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
-sys.path.append('/newdata3/xsa/UniverSeg-main')
-sys.path.append('/newdata3/xsa/ICUSeg/mambamodel')
-
 from universeg import universeg
 import numpy as np
 from example_Data.cervix import CervixDataset
@@ -17,15 +13,9 @@ from collections import defaultdict
 from tqdm.auto import tqdm
 import argparse
 from EICSeg import MamICL
-# from util.distributed import init_distributed
-# from util.arguments import load_opt_from_config_files
-# from xdecoder.BaseModel import BaseModel
-# from xdecoder import build_model
-# from CubeMamba import MamICL
 from PIL import Image
 import os
 import imgviz
-# from medpy.metric.binary import dc
 import cv2
 from peft import PeftModel, PeftConfig
 from utils.distributed import init_distributed
@@ -364,10 +354,6 @@ def inference_multi_painter(model, image, label_onehot, support_images, support_
     ### image:(1, 448, 448) label:(5, 448, 448) support_imag: (56, 1, 448,448) support_label:(56, 5, 448, 448)
 
     panoptic_coco_categories = '/data1/paintercoco/data/panoptic_coco_categories.json'
-    # with open(panoptic_coco_categories, 'r') as f:
-    #     categories_list = json.load(f)
-    # categories = {category['id']: category for category in categories_list}
-    # catid2colorid = {category['id']: idx for idx, category in enumerate(categories_list)}
 
     new_seg_label = torch.zeros((1, 448, 448, 3), dtype=torch.long).cuda()
     new_seg_support = torch.zeros((support_labels_onehot.shape[0], 448, 448, 3), dtype=torch.long).cuda()
@@ -709,56 +695,28 @@ def inference_multi(model, image, label_onehot, support_images, support_labels_o
 
 
 args = get_args_parser()
-# model_univer = universeg(pretrained=True)
-# _ = model_univer.to('cpu')
-# model_univer.eval()
+model_univer = universeg(pretrained=True)
+_ = model_univer.to('cpu')
+model_univer.eval()
 
 opt = load_opt_from_config_files(args.conf_files)
 opt = init_distributed(opt)
-# model_our = BaseModel(opt, build_model(opt)).cuda()
-# model_our.eval()
+
+model_our = MamICL(cfg=opt).cuda()
+model_our.eval()
 
 
-# model_dict = model_our.state_dict()
-# check_decoder = torch.load(os.path.join('/data1/paintercoco/output_dir_scripple_sammul/', 'checkpoint-22.pth'))
-# for k, v in check_decoder.items():
-#     if k in model_dict.keys():
-#         model_dict[k] = v
-
-# model_our.load_state_dict(model_dict)
-# model_our.model.backbone = PeftModel.from_pretrained(model_our.model.backbone, "/data1/paintercoco/output_dir_scripple_sammul/22/")
-# print("load success")
-
-model_our_1 = MamICL(cfg=opt, strategy='avg').cuda()
-model_our_1.eval()
-
-model_our_2 = MamICL(cfg=opt).cuda()
-model_our_2.eval()
-
-# # model_our = torch.nn.parallel.DistributedDataParallel(model_our, device_ids=[args.local_rank],
-# #                                                           output_device=args.local_rank, find_unused_parameters=True)
-# # model_our = torch.nn.parallel.DistributedDataParallel(model_our, device_ids=[args.local_rank],
-# #                                                           output_device=args.local_rank, find_unused_parameters=True)
-# # 
-model_dict = model_our_2.state_dict()
-check_decoder = torch.load("/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/checkpoint-7200_0.8408008830264327.pth")
+model_dict = model_our.state_dict()
+check_decoder = torch.load("checkpoint-7200.pth")
 for k, v in check_decoder['model'].items():
     if k in model_dict.keys():
         model_dict[k] = v
-model_our_1.load_state_dict(model_dict)
-model_our_1.backbone = PeftModel.from_pretrained(model_our_1.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/")
-
-model_our_2.load_state_dict(model_dict)
-model_our_2.backbone = PeftModel.from_pretrained(model_our_2.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/")
-print("load success")
-print("load success")
+model_our.load_state_dict(model_dict)
+model_our.backbone = PeftModel.from_pretrained(model_our.backbone, "/newdata3/7200/")
 
 
-repetation = 5
-total_univer = []
-total_ours = []
+repetation = 200
 total_ours_1 = []
-total_ours_2 = []
 
 d_support = CervixDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
 d_test = CervixDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
@@ -771,57 +729,28 @@ for rep in range(repetation):
 
     n_viz = 16
     n_predictions = 200
-    results_univer = defaultdict(list)
-    results_ours = defaultdict(list)
     results_ours_1 = defaultdict(list)
-    results_ours_2 = defaultdict(list)
-    results_persam = defaultdict(list)
 
     idxs = np.random.permutation(len(d_test))[:n_predictions]
 
     for i in tqdm(idxs):
         image, label = d_test[i]
 
-        # vals_univer = inference_multi(model_univer, image, label, support_images, support_labels, 'cpu')
         vals_ours_1 = inference_multi_our(model_our_1, image, label, support_images, support_labels, 'cuda')
-        vals_ours_2 = inference_multi_our(model_our_2, image, label, support_images, support_labels, 'cuda')
-
-        # for k, v in vals_univer.items():
-        #     results_univer[k].append(v)
 
         for k, v in vals_ours_1.items():
             results_ours_1[k].append(v)
-        
-        for k, v in vals_ours_2.items():
-            results_ours_2[k].append(v)
 
 
     scores_ours_1 = results_ours_1.pop('score')
-    scores_ours_2 = results_ours_2.pop('score')
-    # scores_univer = results_univer.pop('score')
 
     avg_score_ours_1 = np.mean(scores_ours_1)
-    avg_score_ours_2 = np.mean(scores_ours_2)
-    # avg_score_univer = np.mean(scores_univer)
 
     total_ours_1.append(avg_score_ours_1)
-    total_ours_2.append(avg_score_ours_2)
-    # total_univer.append(avg_score_univer)
 
 avg_ours_1 = np.mean(total_ours_1)
 std_ours_1 = np.std(total_ours_1)
 
-avg_ours_2 = np.mean(total_ours_2)
-std_ours_2 = np.std(total_ours_2)
-
-# avg_univer = np.mean(total_univer)
-# std_univer = np.std(total_univer)
-
-# print('univer avg dice score after 5 repetations:{}'.format(avg_univer))
-# print('univer std dice score after 5 repetations:{}'.format(std_univer))
 
 print('Our11 avg dice score after 5 repetations:{}'.format(avg_ours_1))
 print('Our std dice score after 5 repetations:{}'.format(std_ours_1))
-
-print('Our22 avg dice score after 5 repetations:{}'.format(avg_ours_2))
-print('Our std dice score after 5 repetations:{}'.format(std_ours_2))
