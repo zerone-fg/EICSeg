@@ -15,10 +15,6 @@ join = os.path.join
 
 
 def process_img(path: pathlib.Path, size: Tuple[int, int]):
-    # img_1024 = np.load(
-    #     join(path), "r", allow_pickle=True
-    # )
-    # img_1024 = Image.fromarray(np.uint8(img_1024 * 255))
     img_1024 = Image.open(join(path))
     img_1024 = img_1024.resize((size[0], size[1]), resample=Image.BILINEAR)
     img_1024 = img_1024.convert('L')
@@ -28,10 +24,6 @@ def process_img(path: pathlib.Path, size: Tuple[int, int]):
 
 
 def process_seg(path: pathlib.Path, size: Tuple[int, int]):
-    # gt = np.load(
-    #     path, "r", allow_pickle=True
-    # )
-    # gt_448 = Image.fromarray(np.uint8(gt)).resize((size[0], size[1]), Image.NEAREST)
     gt_448 = Image.open(path).resize((size[0], size[1]), Image.NEAREST)
     seg = np.array(gt_448)
     uni_ids = np.unique(seg)
@@ -41,15 +33,8 @@ def process_seg(path: pathlib.Path, size: Tuple[int, int]):
 
 def load_folder(path: pathlib.Path, size: Tuple[int, int] = (128, 128)):
     data = []
-    # filter_data = ["2477092", "6339208", "2609008", "3388252", "3089528", "5664630"]
-    # filter_data = ["2477092", "6339208", "2609008", "3388252", "3089528", "5664630",
-    #               "7657884", "1565722", "1578068", "3744998", "2780380", "0507688",
-    #               "6682806", "7742556", "3463338", "6171298", "0773652", "1577656",
-    #               "2088692", "9570942", "5502532", "2469782", "5176452", "0763890",
-    #               "0759564"]
     
     for file in os.listdir(path):
-        # if not any(substring in file for substring in filter_data):
         img = process_img(join(path, file), size=size)
         seg_file = join(path, file).replace('imgs', 'gts')
         seg, uni_ids = process_seg(seg_file, size=size)
@@ -98,11 +83,6 @@ class CervixDataset(Dataset):
     def __len__(self):
         return len(self._idxs)
 
-    # def __getitem__(self, idx):
-    #     img, seg, name = self._data[self._idxs[idx]]
-    #     if self.label is not None:
-    #         seg = seg[self._ilabel][None]
-    #     return img, seg, name
     def __getitem__(self, idx):
         if self.split == "support":  # 仅对 support 数据动态打乱
             idx = np.random.randint(0, len(self._idxs))
