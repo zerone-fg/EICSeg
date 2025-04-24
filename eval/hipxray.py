@@ -2,12 +2,7 @@ import torch.nn.functional as F
 import torch
 # device = 'cuda' if torch.cuda.is_available() else 'cpu'
 import os
-# device = 'cuda' if torch.cuda.is_available() else 'cpu'
-os.environ['CUDA_VISIBLE_DEVICES'] = '1'
 import sys
-sys.path.append('/newdata3/xsa/UniverSeg-main')
-sys.path.append('/newdata3/xsa/ICUSeg/mambamodel')
-
 from universeg import universeg
 import numpy as np
 from example_Data.hipxray import HipXrayDataset
@@ -18,13 +13,11 @@ import einops as E
 from collections import defaultdict
 from tqdm.auto import tqdm
 import argparse
-# from MamICL_invo import MamICL
-from EICSeg_unet import MamICL
+from EICSeg import MamICL
 import os
 from PIL import Image
 import imgviz
 import imgviz
-# from medpy.metric.binary import dc
 from peft import PeftModel
 from utils.distributed import init_distributed
 from utils.arguments import load_opt_from_config_files
@@ -269,9 +262,6 @@ def inference_multi_our(model, image, label_onehot, support_images, support_labe
     image, label_onehot = image.to(device), label_onehot.to(device)
     support_size, _, h, w = support_images.shape
 
-    # save_img = Image.fromarray(np.uint8(image[0].cpu().numpy() * 255))
-    # save_img.save("hip_com/test_image_{}.png".format(1 * 5 + i))
-
     image = (image - image.min()) / (image.max() - image.min())
     support_images = (support_images - support_images.min()) / (support_images.max() - support_images.min())
 
@@ -296,20 +286,6 @@ def inference_multi_our(model, image, label_onehot, support_images, support_labe
         score = dice_score(hard_pred_1[k], label_onehot[k])
         scores.append(score)
         print('ours:{}'.format(score))
-
-    # save_mask = torch.zeros((h, w), dtype=torch.uint8)
-    # for id in range(n_labels):
-    #     save_mask[hard_pred_1[id][0]] = torch.tensor(id + 1, dtype=torch.uint8)
-    #     mask = hard_pred_1[id][0]
-    #     mask[hard_pred_1[id][0]] = torch.tensor(id + 1, dtype=torch.uint8)
-    #     mask = mask.cpu().numpy().astype(np.uint8)
-    #     # save_colored_mask(mask, os.path.join('hip_com/{}_{}_.png'.format(id, id)))
-
-    # save_colored_mask(np.array(save_mask), os.path.join('hip_com/final_{}_{}.png'.format(id, np.mean(scores))))
-    # backmask = label_onehot.sum(dim=0) == 0
-    # label_onehot_save = torch.argmax(label_onehot, dim=0) + 1
-    # label_onehot_save[backmask] = 0
-    # save_colored_mask(np.array(label_onehot_save.cpu()), os.path.join('hip_com/label_{}_{}.png'.format(id, np.mean(scores))))
 
     return {'Image': image,
             'Soft Prediction': soft_pred_onehot,
@@ -437,15 +413,6 @@ def inference_multi(model, image, label_onehot, support_images, support_labels_o
         scores.append(score)
         print('universeg:{}'.format(score))
 
-    # save_mask = torch.zeros((1, 1, h, w), dtype=torch.uint8)
-    # for id in range(1, n_labels):
-    #     save_mask[0, 0, hard_pred_1 == id] = torch.tensor(id, dtype=torch.uint8)
-
-    # save_mask = F.interpolate(save_mask, (448, 448), mode='nearest')
-    # save_mask = save_mask.squeeze(0).squeeze(0)
-
-    # save_colored_mask(np.array(save_mask), os.path.join('hip_com/final_uni{}_{}.png'.format(id, np.mean(scores))))
-
     return {'Image': image,
             'Soft Prediction': soft_pred_onehot,
             'Prediction': hard_pred,
@@ -460,82 +427,21 @@ model_univer.eval()
 
 opt = load_opt_from_config_files(args.conf_files)
 opt = init_distributed(opt)
-# model_our = BaseModel(opt, build_model(opt)).cuda()
-# model_our.eval()
-
-
-# model_dict = model_our.state_dict()
-# check_decoder = torch.load(os.path.join('/data1/paintercoco/output_dir_scripple_sammul/', 'checkpoint-22.pth'))
-# for k, v in check_decoder.items():
-#     if k in model_dict.keys():
-#         model_dict[k] = v
-
-# model_our.load_state_dict(model_dict)
-# model_our.model.backbone = PeftModel.from_pretrained(model_our.model.backbone, "/data1/paintercoco/output_dir_scripple_sammul/22/")
-# print("load success")
 
 model_our_1 = MamICL(cfg=opt).cuda()
 model_our_1.eval()
 
-model_our_2 = MamICL(cfg=opt).cuda()
-model_our_2.eval()
-
-# # model_our = torch.nn.parallel.DistributedDataParallel(model_our, device_ids=[args.local_rank],
-# #                                                           output_device=args.local_rank, find_unused_parameters=True)
-# # model_our = torch.nn.parallel.DistributedDataParallel(model_our, device_ids=[args.local_rank],
-# #                                                           output_device=args.local_rank, find_unused_parameters=True)
-# # 
-# model_dict = model_our_2.state_dict()
-# check_decoder = torch.load("/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/checkpoint-7200_0.8408008830264327.pth")
-# for k, v in check_decoder['model'].items():
-#     if k in model_dict.keys():
-#         model_dict[k] = v
-# model_our_1.load_state_dict(model_dict)
-# model_our_1.backbone = PeftModel.from_pretrained(model_our_1.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/")
-
-# model_our_2.load_state_dict(model_dict)
-# model_our_2.backbone = PeftModel.from_pretrained(model_our_2.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/")
-# print("load success")
-# print("load success")
 model_dict = model_our_1.state_dict()
-check_decoder = torch.load("/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_spsize448_unet/5600/checkpoint-5600_0.8538028426390789.pth")
+check_decoder = torch.load("/newdata3/checkpoint-7200.pth")
 for k, v in check_decoder['model'].items():
     if k in model_dict.keys():
         model_dict[k] = v
 model_our_1.load_state_dict(model_dict)
-# model_our_1.backbone = PeftModel.from_pretrained(model_our_1.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/")
-
-model_our_2.load_state_dict(model_dict)
-
-# model_our = MamICL(cfg=opt).cuda()
-# model_our.eval()
-# # # model_our = torch.nn.parallel.DistributedDataParallel(model_our, device_ids=[args.local_rank],
-# #                                                         #   output_device=args.local_rank, find_unused_parameters=True)
-
-# # # model_our = MamICL(cfg=opt).cuda()
-# # # model_our.eval()
-# model_dict = model_our.state_dict()
-# # # check_decoder = torch.load("/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/checkpoint-24400_0.49497267878995616.pth")
-# # # for k, v in check_decoder['model'].items():
-# # #     if k in model_dict.keys():
-# # #         model_dict[k] = v
-# # # model_our.load_state_dict(model_dict)
-# # # model_our.backbone = PeftModel.from_pretrained(model_our.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/")
-# check_decoder = torch.load("/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/checkpoint-7200_0.8408008830264327.pth")
-# for k, v in check_decoder['model'].items():
-#     if k in model_dict.keys():
-#         model_dict[k] = v
-# model_our.load_state_dict(model_dict)
-# model_our.backbone = PeftModel.from_pretrained(model_our.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/")
-
-# print("load success")
+model_our_1.backbone = PeftModel.from_pretrained(model_our_1.backbone, "/newdata3/7200/")
 
 
-repetation = 5
-total_univer = []
-total_ours = []
+repetation = 200
 total_ours_1 = []
-total_ours_2 = []
 
 d_support = HipXrayDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
 d_test = HipXrayDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
@@ -548,57 +454,24 @@ for rep in range(repetation):
 
     n_viz = 16
     n_predictions = 200
-    results_univer = defaultdict(list)
-    results_ours = defaultdict(list)
     results_ours_1 = defaultdict(list)
-    results_ours_2 = defaultdict(list)
-    results_persam = defaultdict(list)
-
     idxs = np.random.permutation(len(d_test))[:n_predictions]
 
     for i in tqdm(idxs):
         image, label = d_test[i]
 
-        vals_univer = inference_multi(model_univer, image, label, support_images, support_labels, 'cpu')
         vals_ours_1 = inference_multi_our(model_our_1, image, label, support_images, support_labels, 'cuda')
-        # /vals_ours_2 = inference_multi_our(model_our_2, image, label, support_images, support_labels, 'cuda')
-
-        for k, v in vals_univer.items():
-            results_univer[k].append(v)
 
         for k, v in vals_ours_1.items():
             results_ours_1[k].append(v)
-        
-        # for k, v in vals_ours_2.items():
-        #     results_ours_2[k].append(v)
-
 
     scores_ours_1 = results_ours_1.pop('score')
-    # scores_ours_2 = results_ours_2.pop('score')
-    scores_univer = results_univer.pop('score')
 
     avg_score_ours_1 = np.mean(scores_ours_1)
-    # avg_score_ours_2 = np.mean(scores_ours_2)
-    avg_score_univer = np.mean(scores_univer)
-
     total_ours_1.append(avg_score_ours_1)
-    # total_ours_2.append(avg_score_ours_2)
-    total_univer.append(avg_score_univer)
-
+    
 avg_ours_1 = np.mean(total_ours_1)
 std_ours_1 = np.std(total_ours_1)
 
-# avg_ours_2 = np.mean(total_ours_2)
-# std_ours_2 = np.std(total_ours_2)
-
-avg_univer = np.mean(total_univer)
-std_univer = np.std(total_univer)
-
-print('univer avg dice score after 5 repetations:{}'.format(avg_univer))
-print('univer std dice score after 5 repetations:{}'.format(std_univer))
-
 print('Our11 avg dice score after 5 repetations:{}'.format(avg_ours_1))
 print('Our std dice score after 5 repetations:{}'.format(std_ours_1))
-
-# print('Our22 avg dice score after 5 repetations:{}'.format(avg_ours_2))
-# print('Our std dice score after 5 repetations:{}'.format(std_ours_2))
