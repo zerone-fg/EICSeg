@@ -20,9 +20,6 @@ def process_img(path: pathlib.Path, size: Tuple[int, int]):
     img_1024 = Image.fromarray(img_1024)
     img_1024 = img_1024.resize(size, resample=Image.BILINEAR)
 
-    # img_save = img_1024
-    # img_save.save("/newdata3/xsa/ICUSeg/mambamodel/eval/stare_vis/{}.jpg".format(str(path).split("/")[-1][:-4]))
-
     img_1024 = img_1024.convert('L')
 
     img = np.array(img_1024)
@@ -100,11 +97,6 @@ class StareDataset(Dataset):
     def __len__(self):
         return len(self._idxs)
 
-    # def __getitem__(self, idx):
-    #     img, seg, _= self._data[self._idxs[idx]]
-    #     if self.label is not None:
-    #         seg = seg[self._ilabel][None]
-    #     return img, seg 
     def __getitem__(self, idx):
         if self.split == "support":  # 仅对 support 数据动态打乱
             idx = np.random.randint(0, len(self._idxs))
