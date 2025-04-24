@@ -31,8 +31,8 @@ EICSeg is evaluated across diverse benchmarks (e.g., MoNuSeg, Cervix, ACDC, WBC,
 
 ```bash
 #### Installation
-git clone [https://github.com/your-org/ProjectName.git](https://github.com/zerone-fg/EICSeg.git)
-cd ProjectName
+git clone [https://github.com/zerone-fg/EICSeg.git](https://github.com/zerone-fg/EICSeg.git)
+cd EICSeg
 conda env create -f environment.yaml
 
 #### For evaluation
