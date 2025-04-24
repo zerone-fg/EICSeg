@@ -19,12 +19,7 @@ def process_img(path: pathlib.Path, size: Tuple[int, int]):
         join(path), "r", allow_pickle=True
     )
     img_1024 = Image.fromarray(np.uint8(img_1024 * 255))
-    # path = "/newdata3/xsa/ICUSeg/mambamodel/eval/spine_vis/CT_SPINE_case3-043.jpg"
-    # img_1024 = Image.open(path)
     img_1024 = img_1024.resize(size, resample=Image.BILINEAR)
-
-    # img_save = img_1024
-    # img_save.save("/newdata3/xsa/ICUSeg/mambamodel/eval/spine_vis/{}.jpg".format(str(path).split("/")[-1][:-4]))
     img_1024 = img_1024.convert('L')
     img = np.array(img_1024)
     img = img.astype(np.float32)
@@ -45,8 +40,6 @@ def process_seg(path: pathlib.Path, size: Tuple[int, int]):
 def load_folder(path: pathlib.Path, size: Tuple[int, int] = (128, 128)):
     data = []
     for file in os.listdir(path):
-        # if 'case2' in file and 'case5' not in file and 'case6' not in file and 'case7' not in file:
-        # if 'case6' in file:
         img = process_img(join(path, file), size=size)
         seg_file = join(path, file).replace('imgs', 'gts')
         seg = process_seg(seg_file, size=size)
@@ -105,11 +98,6 @@ class SPINEDataset(Dataset):
     def __len__(self):
         return len(self._idxs)
 
-    # def __getitem__(self, idx):
-    #     img, seg, name = self._data[self._idxs[idx]]
-    #     if self.label is not None:
-    #         seg = seg[self._ilabel][None]
-    #     return img, seg, name
     def __getitem__(self, idx):
         if self.split == "support":  # 仅对 support 数据动态打乱
             idx = np.random.randint(0, len(self._idxs))
