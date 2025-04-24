@@ -33,6 +33,28 @@ EICSeg is evaluated across diverse benchmarks, showing strong performance in [au
 - ⚡ Exploring the integration of different functional VFMs
 
 ---
+## ✅ To Do List
+
+We are actively working on releasing more components of the EICSeg project. The following items will be gradually made available:
+
+- [ ] **Model Checkpoints**  
+  Pre-trained weights for various datasets and configurations.
+
+- [x] **Training Scripts**  
+  Full training pipeline including dataset loading, loss functions, and training configuration.
+
+- [x] **Network Architecture Details**  
+  A detailed breakdown of our unified architecture, including the explicit in-context prompt design.
+
+- [x] **Evaluation Script**
+  Standardized scripts to validate model performance on benchmarks (e.g., metrics like Dice Score)
+
+- [ ] **Data Preparation Instructions**  
+  Guidance for dataset preprocessing and formatting, covering all supported benchmarks.
+
+
+Stay tuned! 🔧 If you’re interested in contributing or collaborating, feel free to reach out via issues or email.
+
 
 ## 📂 Get Started
 
