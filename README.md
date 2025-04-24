@@ -14,7 +14,7 @@ With a single unified architecture, EICSeg enables fully automatic segmentation 
 - 🧩 Few-shot scenarios
 - 🌀 In-domain and out-of-domain generalization
 
-EICSeg is evaluated across diverse benchmarks (e.g., Dataset A, Dataset B), showing strong performance in [your specific task, like medical segmentation, behavior analysis, etc.].
+EICSeg is evaluated across diverse benchmarks (e.g., MoNuSeg, Cervix, ACDC), showing strong performance in [automatic medical image segmentation tasks].
 
 ---
 
