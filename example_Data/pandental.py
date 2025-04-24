@@ -21,8 +21,6 @@ def process_img(path: pathlib.Path, size: Tuple[int, int]):
     img = Image.fromarray(np.uint8(img_1024))
     img = img.resize(size, resample=PIL.Image.BILINEAR)
 
-    # img.save("/newdata3/xsa/ICUSeg/mambamodel/eval/pandental_com/{}.png".format(str(path).split("/")[-1]))
-
     img = img.convert("L")
     img = np.array(img)
     img = img.astype(np.float32)
@@ -91,11 +89,6 @@ class PanDataset(Dataset):
     def __len__(self):
         return len(self._idxs)
 
-    # def __getitem__(self, idx):
-    #     img, seg, name = self._data[self._idxs[idx]]
-    #     if self.label is not None:
-    #         seg = seg[self._ilabel][None]
-    #     return img, seg, name
     def __getitem__(self, idx):
         if self.split == "support":  # 仅对 support 数据动态打乱
             idx = np.random.randint(0, len(self._idxs))
