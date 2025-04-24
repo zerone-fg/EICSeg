@@ -1,8 +1,5 @@
 import torch.nn.functional as F
 import torch
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-import sys
-sys.path.append('/data1/UniverSeg-main/')
 from universeg import universeg
 import numpy as np
 from example_data.tooth import ToothDataset
