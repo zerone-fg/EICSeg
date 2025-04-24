@@ -1,12 +1,6 @@
 import torch.nn.functional as F
 import torch
 import os
-# device = 'cuda' if torch.cuda.is_available() else 'cpu'
-# os.environ['CUDA_VISIBLE_DEVICES'] = '0'
-import sys
-sys.path.append('/newdata3/xsa/UniverSeg-main')
-sys.path.append('/newdata3/xsa/ICUSeg/mambamodel')
-
 from universeg import universeg
 import numpy as np
 from example_Data.stare import StareDataset
@@ -17,15 +11,9 @@ import einops as E
 from collections import defaultdict
 from tqdm.auto import tqdm
 import argparse
-# from util.distributed import init_distributed
-# from util.arguments import load_opt_from_config_files
-# from xdecoder.BaseModel import BaseModel
-# from xdecoder import build_model
 import os
 from PIL import Image
 import imgviz
-# from medpy.metric.binary import dc
-# from peft import PeftModel
 import cv2
 from peft import PeftModel, PeftConfig
 from utils.distributed import init_distributed
@@ -176,9 +164,6 @@ def inference_multi_our(model, image, label_onehot, support_images, support_labe
     n_labels = label_onehot.shape[0]
     image, label_onehot = image.to(device), label_onehot.to(device)
 
-    # save_img = Image.fromarray(np.uint8(image[0].cpu().numpy() * 255))
-    # save_img.save("stare_sam/test_image_{}.png".format(rep * 5 + i))
-
     support_size, _, h, w = support_images.shape
 
     image = (image - image.min()) / (image.max() - image.min())
@@ -197,7 +182,6 @@ def inference_multi_our(model, image, label_onehot, support_images, support_labe
     )
 
     soft_pred = torch.sigmoid(logits)
-    # soft_pred = logits
     soft_pred_onehot = soft_pred[:, :n_labels, :, :].transpose(0, 1)  ###### (1, 10, 448, 448)
     hard_pred = torch.tensor(soft_pred_onehot > 0.5, dtype=torch.uint8)
     print(hard_pred.sum())
@@ -207,18 +191,6 @@ def inference_multi_our(model, image, label_onehot, support_images, support_labe
         score = dice_score(hard_pred[k], label_onehot)
         scores.append(score)
         print(score)
-
-    save_mask = torch.zeros((h, w), dtype=torch.uint8)
-    for id in range(n_labels):
-        save_mask[hard_pred[id][0]] = torch.tensor(id + 21, dtype=torch.uint8)
-        mask = hard_pred[id][0]
-        mask[hard_pred[id][0]] = torch.tensor(id + 21, dtype=torch.uint8)
-
-    save_colored_mask(np.array(save_mask), os.path.join('final_{}.png'.format(id)))
-    # backmask = label_onehot.sum(dim=0) == 0
-    # label_onehot_save = torch.argmax(label_onehot, dim=0) + 21
-    # label_onehot_save[backmask] = 0
-    # save_colored_mask(np.array(label_onehot_save.cpu()), os.path.join('stare_dino/label_{}_{}.png'.format(id, np.mean(scores))))
 
     return {'Image': image,
             'Soft Prediction': soft_pred_onehot,
@@ -260,13 +232,6 @@ def inference_multi(model, image, label_onehot, support_images, support_labels_o
         scores.append(score)
         print(score)
 
-    # save_mask = torch.zeros((1, 1, h, w), dtype=torch.uint8)
-    # for id in range(1, n_labels):
-    #     save_mask[0, 0, hard_pred_1[id][0]] = torch.tensor(id + 20, dtype=torch.uint8)
-    # save_mask = F.interpolate(save_mask, (448, 448), mode='nearest')
-    # save_mask = save_mask.squeeze(0).squeeze(0)
-    # save_colored_mask(np.array(save_mask), os.path.join('stare_com/final_uni{}_{}.png'.format(id, np.mean(scores))))
-
     return {'Image': image,
             'Soft Prediction': soft_pred_onehot,
             'Prediction': hard_pred_1,
@@ -274,258 +239,63 @@ def inference_multi(model, image, label_onehot, support_images, support_labels_o
             'score': np.mean(scores)}
 
 
-# args = get_args_parser()
-# model_univer = universeg(pretrained=True)
-# _ = model_univer.to('cpu')
-# model_univer.eval()
+args = get_args_parser()
+model_univer = universeg(pretrained=True)
+_ = model_univer.to('cpu')
+model_univer.eval()
 
-# # # # opt = load_opt_from_config_files(args.conf_files)
-# # # # opt = init_distributed(opt)
-# # # # model_our = BaseModel(opt, build_model(opt)).cuda()
-# # # # model_our.eval()
-
-# # # # if os.path.exists(os.path.join('/data1/paintercoco/output_dir_scripple_sammul/', 'checkpoint-23.pth')):
-# # # #     model_dict = model_our.state_dict()
-# # # #     checkpoint = torch.load(os.path.join('/data1/paintercoco/output_dir_scripple_sammul/', 'checkpoint-23.pth'))
-
-# # # #     for k, v in checkpoint['model'].items():
-# # # #         if k in model_dict.keys():
-# # # #             model_dict[k] = v
-
-# # # #     model_our.load_state_dict(model_dict)
-# # # #     print("load success")
+opt = load_opt_from_config_files(args.conf_files)
+opt = init_distributed(opt)
 
 
-# # # # def inference_multi_persam(model, image, label_onehot, support_images, support_labels_onehot, device):
-# # # #     from xdecoder.body.ScribblePrompt.scribbleprompt import ScribblePromptSAM
-# # # #     from xdecoder.body.PerSAM.per_segment_anything import sam_model_registry, SamPredictor
-# # # #     import cv2
-# # # #     from eval.DiceValExp.visual_feature import get_feature
-# # # #     all_dict = {}
-# # # #     # sam = ScribblePromptSAM()
-# # # #     sam_type, sam_ckpt = 'vit_b', '/data1/ScribblePrompt_sam_v1_vit_b_res128.pt'
-# # # #     sam = sam_model_registry[sam_type](checkpoint=sam_ckpt).cuda()
-# # # #     sam.eval()
-
-# # # #     test_image = Image.fromarray(np.uint8(image[0] * 255)).convert('RGB')
-# # # #     test_image = np.array(test_image)
-
-# # # #     final_masks_clss = []
-# # # #     for l in range(1, support_labels_onehot.shape[1]):
-# # # #         final_masks = []
-# # # #         #对于每个类别，所有的ref_mask放在一起计算
-# # # #         for k in range(support_images.shape[0]):
-# # # #             ref_image = Image.fromarray(np.uint8(support_images[k][0] * 255)).convert('RGB')
-# # # #             ref_image = np.array(ref_image)
-
-# # # #             ref_mask = Image.fromarray(np.uint8(support_labels_onehot[k][l]* 255)).convert('RGB')
-# # # #             ref_mask = np.array(ref_mask)
-
-# # # #             predictor = SamPredictor(sam)
-# # # #             ref_mask = predictor.set_image(ref_image, ref_mask)
-# # # #             ref_feat = predictor.features.squeeze().permute(1, 2, 0)
-
-# # # #             ref_mask = F.interpolate(ref_mask, size=ref_feat.shape[0: 2], mode="bilinear")
-# # # #             ref_mask = ref_mask.squeeze()[0]
-
-# # # #             target_feat = ref_feat[ref_mask > 0]
-# # # #             target_embedding = target_feat.mean(0).unsqueeze(0)
-# # # #             target_feat = target_embedding / target_embedding.norm(dim=-1, keepdim=True)
-# # # #             target_embedding = target_embedding.unsqueeze(0)
-
-# # # #             print('======> Start Testing')
-
-# # # #             predictor.set_image(test_image)
-# # # #             test_feat = predictor.features.squeeze()
-
-# # # #             C, h, w = test_feat.shape
-# # # #             test_feat = test_feat / test_feat.norm(dim=0, keepdim=True)
-# # # #             test_feat = test_feat.reshape(C, h * w)
-# # # #             sim = target_feat @ test_feat
-
-# # # #             sim = sim.reshape(1, 1, h, w)
-# # # #             sim = F.interpolate(sim, scale_factor=4, mode="bilinear")
-# # # #             sim = predictor.model.postprocess_masks(
-# # # #                     sim,
-# # # #                     input_size=predictor.input_size,
-# # # #                     original_size=predictor.original_size).squeeze()
-
-# # # #             topk_xy_i, topk_label_i, last_xy_i, last_label_i = point_selection(sim, topk=1)
-# # # #             topk_xy = np.concatenate([topk_xy_i, last_xy_i], axis=0)
-# # # #             topk_label = np.concatenate([topk_label_i, last_label_i], axis=0)
-
-# # # #             sim = (sim - sim.mean()) / torch.std(sim)
-# # # #             sim = F.interpolate(sim.unsqueeze(0).unsqueeze(0), size=(64, 64), mode="bilinear")
-# # # #             attn_sim = sim.sigmoid_().unsqueeze(0).flatten(3)
-
-# # # #             masks, scores, logits, _ = predictor.predict(
-# # # #                 point_coords=topk_xy,
-# # # #                 point_labels=topk_label,
-# # # #                 multimask_output=False,
-# # # #                 attn_sim=attn_sim,  # Target-guided Attention
-# # # #                 target_embedding=target_embedding  # Target-semantic Prompting
-# # # #             )
-# # # #             best_idx = 0
-
-# # # #             masks, scores, logits, _ = predictor.predict(
-# # # #                 point_coords=topk_xy,
-# # # #                 point_labels=topk_label,
-# # # #                 mask_input=logits[best_idx: best_idx + 1, :, :],
-# # # #                 multimask_output=True)
-# # # #             best_idx = np.argmax(scores)
-
-# # # #             # Cascaded Post-refinement-2
-# # # #             y, x = np.nonzero(masks[best_idx])
-# # # #             if x.shape[0]!=0:
-# # # #                 x_min = x.min()
-# # # #                 x_max = x.max()
-# # # #                 y_min = y.min()
-# # # #                 y_max = y.max()
-# # # #                 input_box = np.array([x_min, y_min, x_max, y_max])
-# # # #                 masks, scores, logits, _ = predictor.predict(
-# # # #                     point_coords=topk_xy,
-# # # #                     point_labels=topk_label,
-# # # #                     box=input_box[None, :],
-# # # #                     mask_input=logits[best_idx: best_idx + 1, :, :],
-# # # #                     multimask_output=True)
-
-# # # #                 best_idx = np.argmax(scores)
-
-# # # #             final_mask = masks[best_idx]
-# # # #             final_masks.append(torch.tensor(final_mask))
-
-# # # #         final_cls = torch.tensor(torch.stack(final_masks, dim=0),dtype=torch.float32)
-# # # #         final_cls_avg = final_cls.mean(dim=0)
-# # # #         final_masks_clss.append(final_cls_avg)
-
-# # # #     final_masks_clss = torch.stack(final_masks_clss, dim=0)
-# # # #     scores = []
-# # # #     for k in range(1, support_labels_onehot.shape[1]):
-# # # #         score = dice_score(final_masks_clss[k-1], label_onehot[k])
-# # # #         scores.append(score)
-# # # #         print('persam:{}'.format(score))
-
-# # # #     return {'Image': image,
-# # # #             'Soft Prediction': final_masks_clss[k-1],
-# # # #             'Prediction': final_masks_clss[k-1],
-# # # #             'Ground Truth': label_onehot,
-# # #             'score': np.mean(scores)}
-
-# args = get_args_parser()
-# # model_univer = universeg(pretrained=True)
-# # _ = model_univer.to('cpu')
-# # model_univer.eval()
-
-# opt = load_opt_from_config_files(args.conf_files)
-# opt = init_distributed(opt)
-# model_our = BaseModel(opt, build_model(opt)).cuda()
-# model_our.eval()
+model_our_1 = MamICL(cfg=opt).cuda()
+model_our_1.eval()
 
 
-# model_dict = model_our.state_dict()
-# check_decoder = torch.load(os.path.join('/data1/paintercoco/output_dir_scripple_sammul/', 'checkpoint-22.pth'))
-# for k, v in check_decoder.items():
-#     if k in model_dict.keys():
-#         model_dict[k] = v
-
-# model_our.load_state_dict(model_dict)
-# model_our.model.backbone = PeftModel.from_pretrained(model_our.model.backbone, "/data1/paintercoco/output_dir_scripple_sammul/22/")
-# print("load success")
-
-# model_our_1 = MamICL(cfg=opt).cuda()
-# model_our_1.eval()
-
-# model_our_2 = MamICL(cfg=opt, strategy='avg').cuda()
-# model_our_2.eval()
-
-# # # model_our = torch.nn.parallel.DistributedDataParallel(model_our, device_ids=[args.local_rank],
-# # #                                                           output_device=args.local_rank, find_unused_parameters=True)
-# # # model_our = torch.nn.parallel.DistributedDataParallel(model_our, device_ids=[args.local_rank],
-# # #                                                           output_device=args.local_rank, find_unused_parameters=True)
-# # # 
-# model_dict = model_our_2.state_dict()
-# check_decoder = torch.load("/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/checkpoint-7200_0.8408008830264327.pth")
-# for k, v in check_decoder['model'].items():
-#     if k in model_dict.keys():
-#         model_dict[k] = v
-# model_our_1.load_state_dict(model_dict)
-# model_our_1.backbone = PeftModel.from_pretrained(model_our_1.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/")
-
-# model_our_2.load_state_dict(model_dict)
-# model_our_2.backbone = PeftModel.from_pretrained(model_our_2.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_224_ctm_sam_qkv_clsfusion_nochannel_wsam_1/7200/")
-# print("load success")
-# print("load success")
+model_dict = model_our_1.state_dict()
+check_decoder = torch.load("checkpoint_7200.pth")
+for k, v in check_decoder['model'].items():
+    if k in model_dict.keys():
+        model_dict[k] = v
+model_our_1.load_state_dict(model_dict)
+model_our_1.backbone = PeftModel.from_pretrained(model_our_1.backbone, "/newdata3/7200/")
 
 
-# repetation = 5
-# total_univer = []
-# total_ours = []
-# total_ours_1 = []
-# total_ours_2 = []
-# cnt = 0
+repetation = 200
+total_ours_1 = []
+cnt = 0
 
 
-# d_support = StareDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
-# d_test = StareDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
-# for rep in range(repetation):
-#     n_support = 64
-#     support_images, support_labels = zip(*itertools.islice(d_support, n_support))
-#     support_images = torch.stack(support_images).to('cpu')
-#     support_labels = torch.stack(support_labels).to('cpu')
+d_support = StareDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
+d_test = StareDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
+for rep in range(repetation):
+    n_support = 64
+    support_images, support_labels = zip(*itertools.islice(d_support, n_support))
+    support_images = torch.stack(support_images).to('cpu')
+    support_labels = torch.stack(support_labels).to('cpu')
 
-#     n_viz = 16
-#     n_predictions = 200
-#     results_univer = defaultdict(list)
-#     results_ours = defaultdict(list)
-#     results_ours_1 = defaultdict(list)
-#     results_ours_2 = defaultdict(list)
-#     results_persam = defaultdict(list)
+    n_viz = 16
+    n_predictions = 200
+    results_ours_1 = defaultdict(list)
 
-#     idxs = np.random.permutation(len(d_test))[:n_predictions]
+    idxs = np.random.permutation(len(d_test))[:n_predictions]
 
-#     for i in tqdm(idxs):
-#         image, label = d_test[i]
-#         cnt += 1
-#         # vals_univer = inference_multi(model_univer, image, label, support_images, support_labels, cnt, 'cpu')
-#         vals_ours_1 = inference_multi_our(model_our_1, image, label, support_images, support_labels, cnt, 'cuda')
-#         vals_ours_2 = inference_multi_our(model_our_2, image, label, support_images, support_labels, cnt, 'cuda')
+    for i in tqdm(idxs):
+        image, label = d_test[i]
+        cnt += 1
+        vals_ours_1 = inference_multi_our(model_our_1, image, label, support_images, support_labels, cnt, 'cuda')
 
-#         # for k, v in vals_univer.items():
-#         #     results_univer[k].append(v)
+        for k, v in vals_ours_1.items():
+            results_ours_1[k].append(v)
 
-#         for k, v in vals_ours_1.items():
-#             results_ours_1[k].append(v)
-        
-#         for k, v in vals_ours_2.items():
-#             results_ours_2[k].append(v)
+    scores_ours_1 = results_ours_1.pop('score')
 
+    avg_score_ours_1 = np.mean(scores_ours_1)
 
-#     scores_ours_1 = results_ours_1.pop('score')
-#     scores_ours_2 = results_ours_2.pop('score')
-#     # scores_univer = results_univer.pop('score')
+    total_ours_1.append(avg_score_ours_1)
 
-#     avg_score_ours_1 = np.mean(scores_ours_1)
-#     avg_score_ours_2 = np.mean(scores_ours_2)
-#     # avg_score_univer = np.mean(scores_univer)
+avg_ours_1 = np.mean(total_ours_1)
+std_ours_1 = np.std(total_ours_1)
 
-#     total_ours_1.append(avg_score_ours_1)
-#     total_ours_2.append(avg_score_ours_2)
-#     # total_univer.append(avg_score_univer)
-
-# avg_ours_1 = np.mean(total_ours_1)
-# std_ours_1 = np.std(total_ours_1)
-
-# avg_ours_2 = np.mean(total_ours_2)
-# std_ours_2 = np.std(total_ours_2)
-
-# # avg_univer = np.mean(total_univer)
-# # std_univer = np.std(total_univer)
-
-# # print('univer avg dice score after 5 repetations:{}'.format(avg_univer))
-# # print('univer std dice score after 5 repetations:{}'.format(std_univer))
-
-# print('Our11 avg dice score after 5 repetations:{}'.format(avg_ours_1))
-# print('Our std dice score after 5 repetations:{}'.format(std_ours_1))
-
-# print('Our22 avg dice score after 5 repetations:{}'.format(avg_ours_2))
-# print('Our std dice score after 5 repetations:{}'.format(std_ours_2))
+print('Our11 avg dice score after 5 repetations:{}'.format(avg_ours_1))
+print('Our std dice score after 5 repetations:{}'.format(std_ours_1))
