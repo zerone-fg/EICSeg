@@ -14,7 +14,7 @@ With a single unified architecture, EICSeg enables fully automatic segmentation 
 - 🧩 Few-shot scenarios
 - 🌀 In-domain and out-of-domain generalization
 
-EICSeg is evaluated across diverse benchmarks (e.g., MoNuSeg, Cervix, ACDC), showing strong performance in [automatic medical image segmentation tasks].
+EICSeg is evaluated across diverse benchmarks (e.g., MoNuSeg, Cervix, ACDC, WBC, Spine, STARE), showing strong performance in [automatic medical image segmentation tasks].
 
 ---
 
@@ -31,7 +31,7 @@ EICSeg is evaluated across diverse benchmarks (e.g., MoNuSeg, Cervix, ACDC), sho
 
 ```bash
 #### Installation
-git clone https://github.com/your-org/ProjectName.git
+git clone [https://github.com/your-org/ProjectName.git](https://github.com/zerone-fg/EICSeg.git)
 cd ProjectName
 conda env create -f environment.yaml
 
