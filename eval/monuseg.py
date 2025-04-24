@@ -1,13 +1,6 @@
 import torch.nn.functional as F
 import torch
 import os
-# device = 'cuda' if torch.cuda.is_available() else 'cpu'
-os.environ['CUDA_VISIBLE_DEVICES'] = '2'
-import sys
-sys.path.append('/newdata3/xsa/')
-sys.path.append('/newdata3/xsa/UniverSeg-main')
-sys.path.append('/newdata3/xsa/ICUSeg/mambamodel')
-
 from universeg import universeg
 import numpy as np
 from example_Data.monuseg import MonusegDataset
@@ -19,25 +12,18 @@ from collections import defaultdict
 from tqdm.auto import tqdm
 import argparse
 from example_Data.wbc import WBCDataset
-# from util.distributed import init_distributed
-# from util.arguments import load_opt_from_config_files
-# from xdecoder.BaseModel import BaseModel
-# from xdecoder import build_model
 from example_Data.acdc import ACDCDataset
 from example_Data.pandental import PanDataset
 from example_Data.SCD import SCDDataset
 import os
 from PIL import Image
 import imgviz
-# from medpy.metric.binary import dc
-# from peft import PeftModel
 import cv2
 from peft import PeftModel, PeftConfig
 from utils.distributed import init_distributed
 from utils.arguments import load_opt_from_config_files
-# from EICSeg import MamICL
+from EICSeg import MamICL
 from vision_transformer import get_dino_backbone
-# from MamICL_invo import MamICL
 
 
 
@@ -154,11 +140,6 @@ def dice_score(predict, target):
 
     return dice
 
-# def dice_score(y_pred: torch.Tensor, y_true: torch.Tensor) -> float:
-#     y_pred = y_pred.long()
-#     y_true = y_true.long()
-#     score = 2*(y_pred*y_true).sum() / (y_pred.sum() + y_true.sum())
-#     return score.item()
 def point_selection(mask_sim, topk=1):
     # Top-1 point selection
     h, w = mask_sim.shape
@@ -183,8 +164,6 @@ def point_selection(mask_sim, topk=1):
 
 def inference_multi_persam(model, image, label_onehot, support_images, support_labels_onehot, device):
     from PerSAM.per_segment_anything import sam_model_registry, SamPredictor
-    # /newdata3/xsa/sam-med2d_b.pth
-    # /newdata3/xsa/sam_vit_b_01ec64.pth
     sam_type, sam_ckpt = 'vit_b', '/newdata3/xsa/ICUSeg/ScribblePrompt_sam_v1_vit_b_res128.pt'
     sam = sam_model_registry[sam_type](checkpoint=sam_ckpt).cuda()
     sam.eval()
@@ -381,9 +360,6 @@ def inference_multi_our(model, image, label_onehot, support_images, support_labe
     image, label_onehot = image.to(device), label_onehot.to(device)
     support_size, _, h, w = support_images.shape
 
-    # save_img = Image.fromarray(np.uint8(image[0].cpu().numpy() * 255))
-    # save_img.save("monu_com/test_image_{}.png".format(1 * 5 + i))
-
     image = (image - image.min()) / (image.max() - image.min())
     support_images = (support_images - support_images.min()) / (support_images.max() - support_images.min())
 
@@ -402,7 +378,6 @@ def inference_multi_our(model, image, label_onehot, support_images, support_labe
     )
 
     soft_pred = torch.sigmoid(logits)
-    # soft_pred = logits
     soft_pred_onehot = soft_pred[:, :n_labels, :, :].transpose(0, 1)  ###### (1, 10, 448, 448)
     hard_pred = torch.tensor(soft_pred_onehot > 0.5, dtype=torch.uint8)
 
@@ -412,78 +387,12 @@ def inference_multi_our(model, image, label_onehot, support_images, support_labe
         scores.append(score)
         print(score)
 
-    save_mask = torch.zeros((h, w), dtype=torch.uint8)
-    for id in range(n_labels):
-        save_mask[hard_pred[id][0]] = torch.tensor(id + 13, dtype=torch.uint8)
-        mask = hard_pred[id][0]
-        mask[hard_pred[id][0]] = torch.tensor(id + 13, dtype=torch.uint8)
-        mask = mask.cpu().numpy().astype(np.uint8)
-        # save_colored_mask(mask, os.path.join('{}_{}_.png'.format(id, id)))
-
-    save_colored_mask(np.array(save_mask), os.path.join('/newdata3/xsa/ICUSeg/mambamodel/eval/monuseg_vis/final_{}_{}_{}.png'.format(id, np.mean(scores), name)))
-    backmask = label_onehot.sum(dim=0) == 0
-    label_onehot_save = torch.argmax(label_onehot, dim=0) + 13
-    label_onehot_save[backmask] = 0
-    save_colored_mask(np.array(label_onehot_save.cpu()), os.path.join('/newdata3/xsa/ICUSeg/mambamodel/eval/monuseg_vis/label_{}_{}.png'.format(id, np.mean(scores))))
-
     return {'Image': image,
             'Soft Prediction': soft_pred_onehot,
             'Prediction': hard_pred,
             'Ground Truth': label_onehot,
             'score': np.mean(scores)}
-
-
-# def inference_multi(model, image, label_onehot, support_images, support_labels_onehot, name, device):
-#     n_labels = label_onehot.shape[0]
-#     image, label_onehot = image.to(device), label_onehot.to(device)
-
-#     image = F.interpolate(image.unsqueeze(0), (128, 128), align_corners=True, mode='bilinear').squeeze(0)
-#     label_onehot = F.interpolate(label_onehot.unsqueeze(0), (128, 128), mode='nearest').squeeze(0)
-#     support_labels_onehot = F.interpolate(support_labels_onehot, (128, 128), mode='nearest')
-#     support_images = F.interpolate(support_images, (128, 128), align_corners=True, mode='bilinear')
-
-#     support_size, _, h, w = support_images.shape
-
-#     soft_pred_onehot = []
-#     for k in range(n_labels):
-#         support_labels = support_labels_onehot[:,k:k+1]
-#         logits = model(
-#             image[None],
-#             # label_onehot,
-#             support_images[None],
-#             support_labels[None]
-#         )[0]
-#         soft_pred = torch.sigmoid(logits)
-#         soft_pred_onehot.append(soft_pred)
-
-#     soft_pred_onehot = torch.stack(soft_pred_onehot)
-#     # hard_pred_1 = torch.tensor(soft_pred_onehot > 0.5, dtype=torch.uint8)
-#     hard_pred_1 = soft_pred_onehot.round().clip(0,1)
-
-#     scores = []
-#     for k in range(1, n_labels):
-#         score = dice_score(hard_pred_1[k], label_onehot[k])
-#         scores.append(score)
-#         print(score)
-
-#     # save_mask = torch.zeros((1, 1, h, w), dtype=torch.uint8)
-#     # for id in range(1, n_labels):
-#     #     save_mask[0, 0, hard_pred_1[id][0] == 1] = torch.tensor(id + 26, dtype=torch.uint8)
-
-#     # save_mask = F.interpolate(save_mask, (448, 448), mode='nearest')
-#     # save_mask = save_mask.squeeze(0).squeeze(0)
-#     # save_colored_mask(np.array(save_mask), os.path.join('/newdata3/xsa/ICUSeg/mambamodel/eval/monuseg_vis/final_uni{}_{}.png'.format(id, np.mean(scores))))
-
-#     # backmask = label_onehot[1:].sum(dim=0) == 0
-#     # label_onehot_save = torch.argmax(label_onehot, dim=0) + 26
-#     # label_onehot_save[backmask] = 0
-#     # save_colored_mask(np.array(label_onehot_save.cpu()), os.path.join('/newdata3/xsa/ICUSeg/mambamodel/eval/monuseg_vis/label_uni{}_{}_{}.png'.format(id, str(name).split("/")[-1], np.mean(scores))))
-
-#     return {'Image': image,
-#             'Soft Prediction': soft_pred_onehot,
-#             'Prediction': hard_pred_1,
-#             'Ground Truth': label_onehot,
-#             'score': np.mean(scores)}
+    
 
 @torch.no_grad()
 def inference_multi(model, image, label_onehot, support_images, support_labels_onehot, name, device):
@@ -511,26 +420,12 @@ def inference_multi(model, image, label_onehot, support_images, support_labels_o
 
     soft_pred_onehot = torch.stack(soft_pred_onehot)
     hard_pred_1 = torch.tensor(soft_pred_onehot > 0.5, dtype=torch.uint8)
-    # hard_pred_1 = soft_pred_onehot.round().clip(0,1)
 
     scores = []
     for k in range(1, n_labels):
         score = dice_score(hard_pred_1[k], label_onehot[k])
         scores.append(score)
         print(score)
-
-    save_mask = torch.zeros((1, 1, h, w), dtype=torch.uint8)
-    for id in range(1, n_labels):
-        save_mask[0, 0, hard_pred_1[id][0] == 1] = torch.tensor(id + 1, dtype=torch.uint8)
-
-    save_mask = F.interpolate(save_mask, (448, 448), mode='nearest')
-    save_mask = save_mask.squeeze(0).squeeze(0)
-    save_colored_mask(np.array(save_mask), os.path.join('/newdata3/xsa/newnewenewnewnewnewfinal_uni{}_{}.png'.format(id, np.mean(scores))))
-
-    # backmask = label_onehot[1:].sum(dim=0) == 0
-    # label_onehot_save = torch.argmax(label_onehot, dim=0) + 26
-    # label_onehot_save[backmask] = 0
-    # save_colored_mask(np.array(label_onehot_save.cpu()), os.path.join('/newdata3/xsa/ICUSeg/mambamodel/eval/monuseg_vis/label_uni{}_{}_{}.png'.format(id, str(name).split("/")[-1], np.mean(scores))))
 
     return {'Image': image,
             'Soft Prediction': soft_pred_onehot,
@@ -546,46 +441,8 @@ model_univer.eval()
 
 opt = load_opt_from_config_files(args.conf_files)
 opt = init_distributed(opt)
-# model_our = BaseModel(opt, build_model(opt)).cuda()
-# model_our.eval()
-
-
-# model_dict = model_our.state_dict()
-# check_decoder = torch.load(os.path.join('/data1/paintercoco/output_dir_scripple_sammul/', 'checkpoint-22.pth'))
-# for k, v in check_decoder.items():
-#     if k in model_dict.keys():
-#         model_dict[k] = v
-
-# model_our.load_state_dict(model_dict)
-# model_our.model.backbone = PeftModel.from_pretrained(model_our.model.backbone, "/data1/paintercoco/output_dir_scripple_sammul/22/")
-# print("load success")
-
-# model_our_1 = MamICL(cfg=opt).cuda()
-# model_our_1.eval()
-
-# # model_our_2 = MamICL(cfg=opt).cuda()
-# # model_our_2.eval()
-
-# # # # model_our = torch.nn.parallel.DistributedDataParallel(model_our, device_ids=[args.local_rank],
-# # # #                                                           output_device=args.local_rank, find_unused_parameters=True)
-# # # # model_our = torch.nn.parallel.DistributedDataParallel(model_our, device_ids=[args.local_rank],
-# # # #                                                           output_device=args.local_rank, find_unused_parameters=True)
-# # # # 
-# model_dict = model_our_1.state_dict()
-# check_decoder = torch.load("/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_spsize448_swin/3200/checkpoint-3200_0.8531569199833696.pth")
-# for k, v in check_decoder['model'].items():
-#     if k in model_dict.keys():
-#         model_dict[k] = v
-# model_our_1.load_state_dict(model_dict)
-# model_our_1.backbone = PeftModel.from_pretrained(model_our_1.backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_spsize448_swin/3200/")
-
-# 0.26968290666019956  9.2
-# 0.3907017749105737   5.6
 
 backbone = get_dino_backbone(opt).cuda()
-# finetune_backbone = PeftModel.from_pretrained(backbone, "/newdata3/xsa/ICUSeg/mambamodel/output_dir_dino_spsize448_swin/3200/")
-# 44.8
-# 0.6546925620665007
 
 repetation = 5
 total_univer = []
@@ -593,20 +450,8 @@ total_ours = []
 total_ours_1 = []
 total_ours_2 = []
 
-# d_support = MonusegDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
-# d_test = MonusegDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
-
-# d_support = WBCDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
-# d_test = WBCDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
-
-# d_support = ACDCDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
-# d_test = ACDCDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
-
-# d_support = PanDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
-# d_test = PanDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
-
-d_support = SCDDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
-d_test = SCDDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
+d_support = MonusegDataset('JTSC', split='support', label=None, size=(args.input_size, args.input_size))
+d_test = MonusegDataset('JTSC', split='test', label=None, size=(args.input_size, args.input_size))
 
 for rep in range(repetation):
     n_support = 1
@@ -626,47 +471,18 @@ for rep in range(repetation):
 
     for i in tqdm(idxs):
         image, label, name = d_test[i]
+        vals_ours_1 = inference_multi_our(model_our_1, image, label, support_images, support_labels, name, 'cuda')
 
-        # vals_univer = inference_multi(model_univer, image, label, support_images, support_labels, name, 'cpu')
-        # vals_ours_1 = inference_multi_our(model_our_1, image, label, support_images, support_labels, name, 'cuda')
-        vals_ours_2 = inference_multi_persam(backbone, image, label, support_images, support_labels, 'cuda')
-
-        # for k, v in vals_univer.items():
-        #     results_univer[k].append(v)
-
-        for k, v in vals_ours_2.items():
+        for k, v in vals_ours_1.items():
             results_ours_1[k].append(v)
-        
-        # for k, v in vals_ours_2.items():
-        #     results_ours_2[k].append(v)
 
 
     scores_ours_1 = results_ours_1.pop('score')
-    # scores_ours_2 = results_ours_2.pop('score')
-    # scores_univer = results_univer.pop('score')
-
     avg_score_ours_1 = np.mean(scores_ours_1)
-    # /avg_score_ours_2 = np.mean(scores_ours_2)
-    # avg_score_univer = np.mean(scores_univer)
-
     total_ours_1.append(avg_score_ours_1)
-    # total_ours_2.append(avg_score_ours_2)
-    # total_univer.extend(scores_univer)
 
 avg_ours_1 = np.mean(total_ours_1)
 std_ours_1 = np.std(total_ours_1)
 
-# avg_ours_2 = np.mean(total_ours_2)
-# std_ours_2 = np.std(total_ours_2)
-
-# avg_univer = np.mean(total_univer)
-# std_univer = np.std(total_univer)
-
-# print('univer avg dice score after 5 repetations:{}'.format(avg_univer))
-# print('univer std dice score after 5 repetations:{}'.format(std_univer))
-
 print('Our11 avg dice score after 5 repetations:{}'.format(avg_ours_1))
 print('Our std dice score after 5 repetations:{}'.format(std_ours_1))
-
-# print('Our22 avg dice score after 5 repetations:{}'.format(avg_ours_2))
-# print('Our std dice score after 5 repetations:{}'.format(std_ours_2))
